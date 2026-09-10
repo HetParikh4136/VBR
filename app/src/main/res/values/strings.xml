@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">VBR</string>
+    <string name="accessibility_service_desc">VBR accessibility service detects fingerprint sensor swipe gestures to adjust volume when physical buttons are broken.</string>
+</resources>
