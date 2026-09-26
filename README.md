@@ -1,6 +1,6 @@
 # VBR (Volume Button Replacement)
 
-**VBR** is a modern Android utility application designed for smartphones with broken or malfunctioning physical volume buttons. It provides a dual-mode system allowing users to seamlessly control system audio levels using hardware fingerprint sensor gestures, an edge overlay slider, or Quick Settings tiles.
+**VBR** is a modern Android utility application designed for smartphones with broken or malfunctioning physical volume buttons. It provides a dual-mode system allowing users to seamlessly control system audio levels using hardware fingerprint sensor gestures, a customizable edge overlay slider, or Quick Settings tiles.
 
 ---
 
@@ -13,13 +13,18 @@
 * **Assistive Edge Slider Overlay (`OverlayVolumeService`)**
   * A tactile, translucent vertical slider pinned to the screen edge beside your broken volume keys or power button using `SYSTEM_ALERT_WINDOW`.
   * Drag or swipe vertically on the edge bar to smoothly step volume up/down.
-  * Fully customizable: adjustable screen edge (left/right), bar height, thickness, opacity, vertical offset, and haptic feedback tick.
+  * Fully customizable: adjustable screen edge (left/right), bar height, thickness, active opacity, vertical offset, and haptic feedback tick.
+
+* **Zero Transparency when Idle (Auto-Hide for Clean Screenshots)**
+  * Automatically fades the overlay bar to **0% opacity (`alpha = 0.0f`)** when not in active use.
+  * Ensures screenshots and screen recordings capture a completely clean display without any visible overlay or black boxes.
+  * Instantly wakes up on edge touch, adjusts volume with subtle haptic ticks, and smoothly fades back to zero transparency after 2 seconds.
 
 * **Autostart on Boot (`BootReceiver`)**
   * Automatically restarts the edge slider service when the device reboots, powers on, or when the app is updated (`BOOT_COMPLETED`, `LOCKED_BOOT_COMPLETED`).
 
-* **Screenshot & Screen Recording Exclusion (`FLAG_SECURE`)**
-  * Excludes the floating edge slider bar from system screenshots, screen recordings, and recent app previews so it never clutters captured images.
+* **Secure Overlay Mode (`FLAG_SECURE`)**
+  * Optional toggle applying `WindowManager.LayoutParams.FLAG_SECURE` to the overlay window for additional privacy.
 
 * **Quick Settings Tile (`VolumeTileService`)**
   * Custom Android Quick Settings tile ("Volume Slider") in the notification shade to summon the system volume slider directly with a single tap.
@@ -104,7 +109,7 @@ app/src/main/
 2. **Assistive Edge Slider**
    - Toggle **Active on screen** on the main dashboard.
    - Grant the **Display over other apps** permission when prompted.
-   - Tap **Customize Overlay Bar Settings** to adjust edge side (left/right), bar height, opacity, thickness, and screenshot exclusion (`FLAG_SECURE`).
+   - Tap **Customize Overlay Bar Settings** to adjust edge side (left/right), bar height, thickness, active opacity, idle zero-transparency, and secure mode.
 
 3. **Notification Shade Shortcut**
    - Swipe down twice from the top of your screen to expand Quick Settings.

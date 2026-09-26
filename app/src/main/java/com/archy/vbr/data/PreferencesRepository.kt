@@ -19,6 +19,8 @@ class PreferencesRepository(private val context: Context) {
         val OVERLAY_ENABLED = booleanPreferencesKey("overlay_enabled")
         val HAPTIC_ENABLED = booleanPreferencesKey("haptic_enabled")
         val HIDE_FROM_SCREENSHOTS = booleanPreferencesKey("hide_from_screenshots")
+        val AUTO_FADE_ENABLED = booleanPreferencesKey("auto_fade_enabled")
+        val IDLE_ALPHA = floatPreferencesKey("idle_alpha")
         val OVERLAY_POSITION_LEFT = booleanPreferencesKey("overlay_position_left")
         val OVERLAY_OFFSET_Y = intPreferencesKey("overlay_offset_y")
         val OVERLAY_HEIGHT = intPreferencesKey("overlay_height")
@@ -35,7 +37,15 @@ class PreferencesRepository(private val context: Context) {
     }
 
     val hideFromScreenshots: Flow<Boolean> = context.dataStore.data.map { prefs ->
-        prefs[HIDE_FROM_SCREENSHOTS] ?: true
+        prefs[HIDE_FROM_SCREENSHOTS] ?: false
+    }
+
+    val autoFadeEnabled: Flow<Boolean> = context.dataStore.data.map { prefs ->
+        prefs[AUTO_FADE_ENABLED] ?: true
+    }
+
+    val idleAlpha: Flow<Float> = context.dataStore.data.map { prefs ->
+        prefs[IDLE_ALPHA] ?: 0.0f
     }
 
     val overlayPositionLeft: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -73,6 +83,18 @@ class PreferencesRepository(private val context: Context) {
     suspend fun setHideFromScreenshots(enabled: Boolean) {
         context.dataStore.edit { prefs ->
             prefs[HIDE_FROM_SCREENSHOTS] = enabled
+        }
+    }
+
+    suspend fun setAutoFadeEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[AUTO_FADE_ENABLED] = enabled
+        }
+    }
+
+    suspend fun setIdleAlpha(alpha: Float) {
+        context.dataStore.edit { prefs ->
+            prefs[IDLE_ALPHA] = alpha
         }
     }
 

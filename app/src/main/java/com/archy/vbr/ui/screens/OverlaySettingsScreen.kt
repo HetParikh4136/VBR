@@ -22,7 +22,9 @@ fun OverlaySettingsScreen(
     val coroutineScope = rememberCoroutineScope()
 
     val hapticEnabled by preferencesRepository.hapticEnabled.collectAsState(initial = true)
-    val hideFromScreenshots by preferencesRepository.hideFromScreenshots.collectAsState(initial = true)
+    val hideFromScreenshots by preferencesRepository.hideFromScreenshots.collectAsState(initial = false)
+    val autoFadeEnabled by preferencesRepository.autoFadeEnabled.collectAsState(initial = true)
+    val idleAlpha by preferencesRepository.idleAlpha.collectAsState(initial = 0.0f)
     val positionLeft by preferencesRepository.overlayPositionLeft.collectAsState(initial = false)
     val overlayHeight by preferencesRepository.overlayHeight.collectAsState(initial = 500)
     val overlayWidth by preferencesRepository.overlayWidth.collectAsState(initial = 48)
@@ -52,6 +54,48 @@ fun OverlaySettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Auto-Hide / Zero Transparency when Idle
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Zero Transparency when Idle", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Fades the bar to 0% opacity (completely invisible) when not being touched so screenshots capture zero overlay!",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = autoFadeEnabled,
+                            onCheckedChange = { enabled ->
+                                coroutineScope.launch {
+                                    preferencesRepository.setAutoFadeEnabled(enabled)
+                                }
+                            }
+                        )
+                    }
+
+                    if (autoFadeEnabled) {
+                        Spacer(Modifier.height(12.dp))
+                        Text("Idle Opacity: ${(idleAlpha * 100).toInt()}% (0% = Invisible)", style = MaterialTheme.typography.bodySmall)
+                        Slider(
+                            value = idleAlpha,
+                            onValueChange = { alpha ->
+                                coroutineScope.launch {
+                                    preferencesRepository.setIdleAlpha(alpha)
+                                }
+                            },
+                            valueRange = 0.0f..0.5f
+                        )
+                    }
+                }
+            }
+
             // Screen Side Position
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -68,34 +112,6 @@ fun OverlaySettingsScreen(
                             onCheckedChange = { isLeft ->
                                 coroutineScope.launch {
                                     preferencesRepository.setOverlayPositionLeft(isLeft)
-                                }
-                            }
-                        )
-                    }
-                }
-            }
-
-            // Hide from Screenshots
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Hide from Screenshots", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "Exclude the edge bar from system screenshots and screen recordings",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Switch(
-                            checked = hideFromScreenshots,
-                            onCheckedChange = { hide ->
-                                coroutineScope.launch {
-                                    preferencesRepository.setHideFromScreenshots(hide)
                                 }
                             }
                         )
@@ -163,10 +179,10 @@ fun OverlaySettingsScreen(
                 }
             }
 
-            // Opacity Slider
+            // Active Opacity Slider
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Bar Opacity: ${(overlayAlpha * 100).toInt()}%", style = MaterialTheme.typography.titleMedium)
+                    Text("Active Bar Opacity: ${(overlayAlpha * 100).toInt()}%", style = MaterialTheme.typography.titleMedium)
                     Slider(
                         value = overlayAlpha,
                         onValueChange = { alpha ->
@@ -192,6 +208,34 @@ fun OverlaySettingsScreen(
                         },
                         valueRange = -500f..500f
                     )
+                }
+            }
+
+            // Secure Overlay Mode (FLAG_SECURE)
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Secure Overlay Mode (FLAG_SECURE)", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "Applies FLAG_SECURE. Note: Android renders secure windows as solid black boxes in screenshots.",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        Switch(
+                            checked = hideFromScreenshots,
+                            onCheckedChange = { hide ->
+                                coroutineScope.launch {
+                                    preferencesRepository.setHideFromScreenshots(hide)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }

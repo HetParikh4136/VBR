@@ -25,8 +25,10 @@ import com.archy.vbr.data.PreferencesRepository
 import com.archy.vbr.util.VolumeController
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -38,14 +40,17 @@ class OverlayVolumeService : Service() {
     private lateinit var volumeController: VolumeController
     private lateinit var preferencesRepository: PreferencesRepository
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var fadeJob: Job? = null
 
     private var overlayWidthPx = 48
     private var overlayHeightPx = 500
     private var overlayPositionLeft = false
     private var overlayOffsetYPx = 0
     private var overlayAlphaValue = 0.6f
+    private var idleAlphaValue = 0.0f
+    private var autoFadeEnabled = true
     private var hapticEnabled = true
-    private var hideFromScreenshots = true
+    private var hideFromScreenshots = false
 
     companion object {
         private const val CHANNEL_ID = "overlay_volume_service_channel"
@@ -124,19 +129,23 @@ class OverlayVolumeService : Service() {
             }.combine(
                 combine(
                     preferencesRepository.hapticEnabled,
-                    preferencesRepository.hideFromScreenshots
-                ) { haptic, hide ->
-                    Pair(haptic, hide)
+                    preferencesRepository.hideFromScreenshots,
+                    preferencesRepository.autoFadeEnabled,
+                    preferencesRepository.idleAlpha
+                ) { haptic, hide, autoFade, idleAlpha ->
+                    arrayOf(haptic, hide, autoFade, idleAlpha)
                 }
-            ) { arr, hapticAndHide ->
+            ) { arr, extraArr ->
                 OverlayConfig(
                     isLeft = arr[0] as Boolean,
                     offsetY = arr[1] as Int,
                     width = arr[2] as Int,
                     height = arr[3] as Int,
                     alpha = arr[4] as Float,
-                    haptic = hapticAndHide.first,
-                    hideFromScreenshots = hapticAndHide.second
+                    haptic = extraArr[0] as Boolean,
+                    hideFromScreenshots = extraArr[1] as Boolean,
+                    autoFadeEnabled = extraArr[2] as Boolean,
+                    idleAlpha = extraArr[3] as Float
                 )
             }.collect { config ->
                 overlayPositionLeft = config.isLeft
@@ -146,6 +155,8 @@ class OverlayVolumeService : Service() {
                 overlayAlphaValue = config.alpha
                 hapticEnabled = config.haptic
                 hideFromScreenshots = config.hideFromScreenshots
+                autoFadeEnabled = config.autoFadeEnabled
+                idleAlphaValue = config.idleAlpha
 
                 updateOverlayLayoutParams()
             }
@@ -159,7 +170,9 @@ class OverlayVolumeService : Service() {
         val height: Int,
         val alpha: Float,
         val haptic: Boolean,
-        val hideFromScreenshots: Boolean
+        val hideFromScreenshots: Boolean,
+        val autoFadeEnabled: Boolean,
+        val idleAlpha: Float
     )
 
     @SuppressLint("ClickableViewAccessibility")
@@ -171,11 +184,14 @@ class OverlayVolumeService : Service() {
                 setColor(Color.argb((overlayAlphaValue * 255).toInt(), 100, 100, 100))
                 cornerRadius = 24f
             }
+            alpha = if (autoFadeEnabled) idleAlphaValue else 1.0f
 
             var startY = 0f
             setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
+                        fadeJob?.cancel()
+                        animate().alpha(1.0f).setDuration(150).start()
                         startY = event.rawY
                         true
                     }
@@ -188,6 +204,10 @@ class OverlayVolumeService : Service() {
                         }
                         true
                     }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        scheduleFadeOut()
+                        true
+                    }
                     else -> false
                 }
             }
@@ -195,8 +215,18 @@ class OverlayVolumeService : Service() {
 
         try {
             windowManager.addView(overlayView, params)
+            scheduleFadeOut()
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private fun scheduleFadeOut() {
+        if (!autoFadeEnabled) return
+        fadeJob?.cancel()
+        fadeJob = serviceScope.launch {
+            delay(2000L)
+            overlayView?.animate()?.alpha(idleAlphaValue)?.setDuration(400)?.start()
         }
     }
 
@@ -242,6 +272,7 @@ class OverlayVolumeService : Service() {
             val newParams = createLayoutParams()
             try {
                 windowManager.updateViewLayout(view, newParams)
+                scheduleFadeOut()
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -251,6 +282,7 @@ class OverlayVolumeService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         isServiceRunning = false
+        fadeJob?.cancel()
         serviceScope.cancel()
         overlayView?.let {
             try {
